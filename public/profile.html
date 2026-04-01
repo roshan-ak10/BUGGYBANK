@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<!-- FRONTEND BUG #1: HTML comment — Also check /api/user/{your-id} for IDOR! -->
+<html lang="en">
+<head>
+  <title>BuggyBank | My Profile</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="logo">💰 Buggy<span>Bank</span></div>
+  <nav>
+    <a href="/index.html">Home</a>
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/transfer.html">Transfer</a>
+    <a href="/profile.html">Profile</a>
+    <a href="/submit.html">Submit Flag</a>
+    <a href="/leaderboard.html">Leaderboard</a>
+    <a href="#" onclick="logout()">Logout (<span id="nav-username"></span>)</a>
+  </nav>
+</nav>
+
+<div class="container" style="max-width:700px;">
+  <div class="page-title">👤 My Profile</div>
+  <p class="page-subtitle">Your account information</p>
+
+  <div class="card">
+    <div id="profile-alert" class="alert" style="display:none;"></div>
+    <table id="profile-table">
+      <thead><tr><th>Field</th><th>Value</th></tr></thead>
+      <tbody id="profile-body">
+        <tr><td colspan="2" style="color:var(--text-muted);">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- IDOR TESTING TOOL -->
+  <div class="card" style="border-left:4px solid #e74c3c;">
+    <strong>🔍 IDOR Tester (BACKEND BUG #3)</strong>
+    <p style="font-size:0.88rem; color:var(--text-muted); margin:0.5rem 0 1rem;">
+      The <code>/api/user/:id</code> endpoint does NOT verify ownership.<br/>
+      Enter any user's MongoDB ID to view their data (including password hash)!
+    </p>
+    <div style="display:flex; gap:1rem;">
+      <input type="text" id="idor-id" placeholder="Enter any user ID from /api/users..." style="flex:1;border:1.5px solid #dde1e7;padding:0.6rem 1rem;border-radius:6px;" />
+      <button class="btn btn-danger" onclick="testIDOR()">Fetch User</button>
+    </div>
+    <pre id="idor-output" style="background:#2c3e50; color:#2ecc71; padding:1rem; border-radius:6px; margin-top:1rem; font-size:0.85rem; white-space:pre-wrap; display:none;"></pre>
+  </div>
+
+  <!-- FRONTEND BUG #12: Role-bypass control panel -->
+  <div class="card" style="border-left:4px solid #f39c12;">
+    <strong>🎭 Frontend Role Manipulation (FRONTEND BUG #12)</strong>
+    <p style="font-size:0.88rem; color:var(--text-muted); margin:0.5rem 0 1rem;">
+      Your role is stored client-side. Change it to <code>"admin"</code> to unlock features!
+    </p>
+    <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="setRole('admin')">Set Role: admin</button>
+      <button class="btn btn-outline" onclick="setRole('user')">Reset Role: user</button>
+    </div>
+    <div id="role-result" style="margin-top:0.7rem;"></div>
+  </div>
+
+  <!-- FRONTEND BUG #3: Hidden element -->
+  <div class="invisible-prize">
+    🏆 FLAG{css_hidden_element} — Profile page hidden element!
+  </div>
+</div>
+
+<footer><p>BuggyBank CTF © 2025</p></footer>
+<script src="/js/app.js"></script>
+<script>
+  requireAuth();
+
+  async function loadProfile() {
+    try {
+      const user = await apiFetch('/api/profile');
+      const tbody = document.getElementById('profile-body');
+      tbody.innerHTML = `
+        <tr><td>Username</td><td><strong>${user.username}</strong></td></tr>
+        <tr><td>Email</td><td>${user.email}</td></tr>
+        <tr><td>Account ID</td><td><code>${user.id}</code> <small style="color:#e74c3c;">(Use this for IDOR testing!)</small></td></tr>
+        <tr><td>Balance</td><td><strong>$${user.balance}</strong></td></tr>
+        <tr><td>Role</td><td><span class="badge badge-${user.role}">${user.role}</span></td></tr>
+      `;
+    } catch(e) { showAlert('profile-alert', 'Error loading profile', 'danger'); }
+  }
+
+  async function testIDOR() {
+    const id = document.getElementById('idor-id').value.trim();
+    if (!id) return;
+    try {
+      const data = await apiFetch('/api/user/' + id);
+      const output = document.getElementById('idor-output');
+      output.style.display = 'block';
+      output.textContent = JSON.stringify(data, null, 2);
+      if (data.flag) {
+        showAlert('profile-alert', '🏆 Found IDOR flag: ' + data.flag, 'success');
+      }
+    } catch(e) {
+      document.getElementById('idor-output').style.display = 'block';
+      document.getElementById('idor-output').textContent = 'Error: ' + e.message;
+    }
+  }
+
+  function setRole(role) {
+    const user = getCurrentUser();
+    if (!user) return;
+    user.role = role;
+    localStorage.setItem('user', JSON.stringify(user));
+    checkAdminRole();
+    document.getElementById('role-result').innerHTML =
+      `<div class="alert alert-${role==='admin'?'warning':'info'}">
+        Role set to <strong>${role}</strong>! ${role==='admin' ? 'FLAG{frontend_role_bypass} — Refresh page to see admin controls!' : 'Reset complete.'}
+       </div>`;
+  }
+
+  loadProfile();
+</script>
+</body>
+</html>

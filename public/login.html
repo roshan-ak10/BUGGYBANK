@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<!-- FRONTEND BUG #1: Another HTML comment flag here too -->
+<!-- dev note: test account — username: alice, password: password123 -->
+<html lang="en">
+<head>
+  <title>BuggyBank | Login</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="logo">💰 Buggy<span>Bank</span></div>
+  <nav>
+    <a href="/index.html">Home</a>
+    <a href="/leaderboard.html">Leaderboard</a>
+    <a href="/submit.html">Submit Flag</a>
+  </nav>
+</nav>
+
+<div class="container" style="max-width:500px;">
+  <div style="text-align:center; margin:2rem 0 1.5rem;">
+    <h1 class="page-title">🔐 BuggyBank Login</h1>
+    <p class="page-subtitle">Sign in to your account or register</p>
+  </div>
+
+  <!-- TAB SWITCHER -->
+  <div class="card">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('login')">Login</button>
+      <button class="tab-btn" onclick="showTab('register')">Register</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="login-tab">
+      <div id="login-alert" class="alert" style="display:none;"></div>
+
+      <!-- FRONTEND BUG #4: Disabled input containing a flag -->
+      <div class="form-group">
+        <label>🎁 CTF Hint (disabled field — check the value attribute!)</label>
+        <input type="text" disabled value="FLAG{disabled_input_flag}" style="background:#fff3cd; color:#856404; font-weight:bold;" />
+      </div>
+
+      <div class="form-group">
+        <label>Username</label>
+        <!-- FRONTEND BUG #5: Placeholder text leaks test credentials -->
+        <input type="text" id="login-username"
+               placeholder="Try: admin or alice (FLAG{placeholder_leak})"
+               autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password"
+               placeholder="Hint: Try 'letmein' as a magic password..."
+               autocomplete="off" />
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;" onclick="loginUser()">Login →</button>
+
+      <div class="alert alert-info" style="margin-top:1rem; font-size:0.9rem;">
+        <strong>💡 Hint:</strong> There's a magic password that works for ANY account. Check the JS source!
+      </div>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="register-tab" style="display:none;">
+      <div id="register-alert" class="alert" style="display:none;"></div>
+
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="reg-username" placeholder="Choose a username" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="your@email.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="reg-password" placeholder="Choose a password (min 6 chars)" />
+      </div>
+
+      <!-- FRONTEND BUG #13: Frontend-only validation (min, required) — bypass by removing attr in DevTools -->
+      <div class="form-group">
+        <label>Starting Balance ($)</label>
+        <!-- FRONTEND BUG #13 + #14: min=100 max=1000 — editable via DevTools! -->
+        <input type="number" id="reg-balance" value="1000" min="100" max="1000"
+               title="Frontend only! Remove min/max in DevTools to set any balance." />
+        <small style="color:var(--text-muted);">💡 Hint: Can you change this value via DevTools before submitting?</small>
+      </div>
+
+      <button class="btn btn-success" style="width:100%;" onclick="registerUser()">Create Account →</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>BuggyBank CTF | <a href="/index.html">Home</a></p>
+</footer>
+
+<script src="/js/app.js"></script>
+<script>
+  function showTab(tab) {
+    document.getElementById('login-tab').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('register-tab').style.display = tab === 'register' ? 'block' : 'none';
+    document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', (i === 0) === (tab === 'login')));
+  }
+
+  async function loginUser() {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!username || !password) {
+      showAlert('login-alert', 'Please fill in all fields.', 'danger'); return;
+    }
+    try {
+      const data = await apiFetch('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+      if (data.token) {
+        saveAuth(data.token, data.user);
+        showAlert('login-alert', 'Login successful! Redirecting...', 'success');
+        setTimeout(() => window.location.href = '/dashboard.html', 1000);
+      } else {
+        showAlert('login-alert', data.error || 'Login failed', 'danger');
+      }
+    } catch (e) {
+      showAlert('login-alert', 'Server error: ' + e.message, 'danger');
+    }
+  }
+
+  async function registerUser() {
+    const username = document.getElementById('reg-username').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    // FRONTEND BUG #13: Balance validation only happens here! Not on server.
+    // Remove the min attribute from the input to bypass this.
+    if (!username || !email || !password) {
+      showAlert('register-alert', 'Please fill in all fields.', 'danger'); return;
+    }
+    try {
+      const data = await apiFetch('/api/register', { method: 'POST', body: JSON.stringify({ username, password, email }) });
+      if (data.message) {
+        showAlert('register-alert', data.message + ' Please login.', 'success');
+        setTimeout(() => showTab('login'), 2000);
+      } else {
+        showAlert('register-alert', data.error || 'Registration failed', 'danger');
+      }
+    } catch (e) {
+      showAlert('register-alert', 'Server error: ' + e.message, 'danger');
+    }
+  }
+
+  // Redirect if already logged in
+  if (getToken()) window.location.href = '/dashboard.html';
+</script>
+</body>
+</html>

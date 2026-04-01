@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>BuggyBank | 🏆 Leaderboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="logo">💰 Buggy<span>Bank</span></div>
+  <nav>
+    <a href="/index.html">Home</a>
+    <a href="/dashboard.html" class="auth-required" style="display:none">Dashboard</a>
+    <a href="/submit.html">Submit Flag</a>
+    <a href="/leaderboard.html">Leaderboard</a>
+    <a href="/login.html" class="auth-hidden">Login</a>
+    <a href="#" onclick="logout()" class="auth-required" style="display:none">Logout (<span id="nav-username"></span>)</a>
+  </nav>
+</nav>
+
+<div class="container" style="max-width:800px;">
+  <div style="text-align:center; margin-bottom:2rem;">
+    <div class="page-title">🏆 Leaderboard</div>
+    <p class="page-subtitle">Top players ranked by total points earned</p>
+  </div>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+      <strong>Rankings</strong>
+      <button class="btn btn-outline" onclick="loadLeaderboard()" style="padding:0.4rem 1rem;">🔄 Refresh</button>
+    </div>
+    <div id="leaderboard-content">
+      <p style="color:var(--text-muted);">Loading leaderboard...</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <strong>📊 Flag Points Reference</strong>
+    <table style="margin-top:1rem;">
+      <thead><tr><th>Difficulty</th><th>Points</th><th>Examples</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-easy">Easy</span></td>
+          <td><strong>10 pts</strong></td>
+          <td>HTML comment, Console log, CSS hidden, disabled input, alt-text, title tag, localStorage, sessionStorage, hidden button</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-medium">Medium</span></td>
+          <td><strong>20 pts</strong></td>
+          <td>Base64, hardcoded creds, role bypass, form bypass, editable DOM, network API, CSS file, obfuscated JS, XSS, source map</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-hard">Hard</span></td>
+          <td><strong>50 pts</strong></td>
+          <td>IDOR, login bypass, negative transfer, admin panel, sensitive data</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<footer><p>BuggyBank CTF © 2025 | <a href="/submit.html">Submit a Flag</a></p></footer>
+<script src="/js/app.js"></script>
+<script>
+  async function loadLeaderboard() {
+    try {
+      const data = await apiFetch('/api/leaderboard');
+      const container = document.getElementById('leaderboard-content');
+
+      if (!data.length) {
+        container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:2rem;">No submissions yet. Be the first to find a flag!</p>';
+        return;
+      }
+
+      const medals = ['🥇', '🥈', '🥉'];
+      container.innerHTML = `<table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>Total Points</th>
+            <th>Flags Found</th>
+          </tr>
+        </thead>
+        <tbody>
+        ${data.map((entry, i) => `<tr>
+          <td class="${i < 3 ? 'rank-' + (i+1) : ''}">${medals[i] || (i+1)}</td>
+          <td><strong>${entry.username}</strong></td>
+          <td style="font-size:1.2rem; font-weight:800; color:var(--accent);">${entry.points} pts</td>
+          <td>—</td>
+        </tr>`).join('')}
+        </tbody>
+      </table>`;
+    } catch(e) {
+      document.getElementById('leaderboard-content').textContent = 'Error loading leaderboard.';
+    }
+  }
+
+  loadLeaderboard();
+  updateNavbar();
+</script>
+</body>
+</html>

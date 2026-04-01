@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<!-- FRONTEND BUG #1: HTML comment flag — FLAG{html_comment_secret} -->
+<!-- Negative transfer hack: POST /api/transfer with amount: -500 to steal money FLAG{negative_transfer_exploit} -->
+<html lang="en">
+<head>
+  <title>BuggyBank | Transfer Money</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="logo">💰 Buggy<span>Bank</span></div>
+  <nav>
+    <a href="/index.html">Home</a>
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/transfer.html">Transfer</a>
+    <a href="/profile.html">Profile</a>
+    <a href="/submit.html">Submit Flag</a>
+    <a href="/leaderboard.html">Leaderboard</a>
+    <a href="#" onclick="logout()">Logout (<span id="nav-username"></span>)</a>
+  </nav>
+</nav>
+
+<div class="container" style="max-width:600px;">
+  <div class="page-title" style="margin-bottom:0.3rem;">💸 Transfer Money</div>
+  <p class="page-subtitle">Send money to another BuggyBank user</p>
+
+  <div class="card">
+    <div id="transfer-alert" class="alert" style="display:none;"></div>
+
+    <div class="form-group">
+      <label>Recipient Username</label>
+      <!-- FRONTEND BUG #5: Placeholder leaks valid usernames -->
+      <input type="text" id="transfer-to"
+             placeholder="Try: alice, bob, or admin (FLAG{placeholder_leak})" />
+    </div>
+
+    <div class="form-group">
+      <label>Amount ($)</label>
+      <!-- FRONTEND BUG #13 & #14: min=1 validation is ONLY frontend
+           Remove min="1" attribute in DevTools to send negative amounts!
+           FRONTEND BUG #14: The value is also editable via inspect         -->
+      <input type="number" id="transfer-amount" value="100" min="1" step="0.01"
+             title="HINT: Remove the min=1 attribute to send negative amounts! FLAG{validation_bypass}" />
+      <small style="color:#e74c3c;">💡 <strong>Hint:</strong> Remove the <code>min="1"</code> attribute in DevTools to send negative amounts!</small>
+    </div>
+
+    <div class="form-group">
+      <label>Note (optional)</label>
+      <input type="text" id="transfer-note" placeholder="Payment note..." />
+    </div>
+
+    <!-- FRONTEND BUG #13: validateTransferForm() only checks frontend -->
+    <button class="btn btn-primary" style="width:100%;"
+            onclick="doTransfer()">
+      Transfer Money →
+    </button>
+
+    <div class="alert alert-warning" style="margin-top:1rem;">
+      <strong>⚠️ Security Hint:</strong> The backend does NOT validate that amount must be positive!
+      Try sending a negative value by removing the <code>min</code> attribute from the input field.
+    </div>
+  </div>
+
+  <div class="card">
+    <strong>🙋 Available Accounts (BACKEND BUG: No-Auth Endpoint)</strong>
+    <p style="font-size:0.88rem; color:var(--text-muted); margin:0.5rem 0;">
+      The <code>/api/users</code> endpoint requires no authentication!
+    </p>
+    <div id="users-list" style="margin-top:0.7rem;">Loading users...</div>
+  </div>
+
+  <!-- FRONTEND BUG #3: Hidden div -->
+  <div class="invisible-prize">
+    🏆 FLAG{css_hidden_element} — hidden on transfer page too!
+  </div>
+</div>
+
+<footer><p>BuggyBank CTF © 2025</p></footer>
+<script src="/js/app.js"></script>
+<script>
+  requireAuth();
+
+  async function loadUsers() {
+    // BACKEND BUG #2: No auth required for /api/users
+    try {
+      const users = await apiFetch('/api/users');
+      const container = document.getElementById('users-list');
+      container.innerHTML = `<table>
+        <thead><tr><th>Username</th><th>Email</th><th>Balance</th><th>ID</th></tr></thead>
+        <tbody>
+        ${users.map(u => `<tr>
+          <td><strong>${u.username}</strong> <span class="badge badge-${u.role}">${u.role}</span></td>
+          <td>${u.email}</td>
+          <td>$${u.balance}</td>
+          <td style="font-size:0.75rem; color:var(--text-muted);">${u._id}</td>
+        </tr>`).join('')}
+        </tbody></table>
+      <p style="font-size:0.8rem; color:#e74c3c; margin-top:0.5rem;">
+        💡 IDOR Hint: IDs are exposed! Try GET /api/user/{id} with any user ID to access their data.
+      </p>`;
+    } catch(e) { document.getElementById('users-list').textContent = 'Error loading users'; }
+  }
+
+  async function doTransfer() {
+    // FRONTEND BUG #13: validateTransferForm only checks on frontend!
+    if (!validateTransferForm()) return;
+
+    const toUsername = document.getElementById('transfer-to').value.trim();
+    const amount = parseFloat(document.getElementById('transfer-amount').value);
+    const note = document.getElementById('transfer-note').value.trim();
+
+    if (!toUsername) { showAlert('transfer-alert', 'Enter a recipient username', 'danger'); return; }
+
+    try {
+      const data = await apiFetch('/api/transfer', {
+        method: 'POST',
+        body: JSON.stringify({ toUsername, amount, note })
+      });
+      if (data.message) {
+        showAlert('transfer-alert',
+          data.message + (data.newBalance !== undefined ? ` | New balance: $${data.newBalance}` : ''),
+          data.message.includes('FLAG') ? 'warning' : 'success');
+      } else {
+        showAlert('transfer-alert', data.error || 'Transfer failed', 'danger');
+      }
+    } catch (e) {
+      showAlert('transfer-alert', 'Error: ' + e.message, 'danger');
+    }
+  }
+
+  loadUsers();
+</script>
+</body>
+</html>

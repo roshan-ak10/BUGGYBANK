@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<!-- FRONTEND BUG #1: Flag hidden in HTML comment — FLAG{html_comment_secret} -->
+<!-- TODO: Remove this before production! FLAG{html_comment_secret} -->
+<!-- Admin backdoor: GET /api/admin/dashboard with header x-admin-key: secretadminkey -->
+
+<html lang="en">
+<head>
+  <!-- FRONTEND BUG #7: Flag in title tag — FLAG{title_tag_hidden} -->
+  <title>BuggyBank | Secure Online Banking | FLAG{title_tag_hidden}</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="logo">💰 Buggy<span>Bank</span></div>
+  <nav>
+    <a href="/index.html">Home</a>
+    <a href="/dashboard.html" class="auth-required" style="display:none">Dashboard</a>
+    <a href="/transfer.html" class="auth-required" style="display:none">Transfer</a>
+    <a href="/profile.html" class="auth-required" style="display:none">Profile</a>
+    <a href="/submit.html">Submit Flag</a>
+    <a href="/leaderboard.html">Leaderboard</a>
+    <!-- FRONTEND BUG #20: Hidden admin link — revealed via Inspect -->
+    <a href="/admin.html" class="secret-admin-btn" id="hidden-admin-link" style="display:none; color:#f39c12; font-weight:bold;">🔑 Admin</a>
+    <a href="/login.html" class="auth-hidden">Login</a>
+    <a href="#" onclick="logout()" class="auth-required" style="display:none">Logout (<span id="nav-username"></span>)</a>
+  </nav>
+</nav>
+
+<div class="container">
+  <!-- HERO SECTION -->
+  <div class="hero">
+    <h1>🏦 Welcome to BuggyBank CTF</h1>
+    <p>An intentionally vulnerable banking application for cybersecurity learning</p>
+    <a href="/login.html" class="btn btn-primary" style="margin-right:1rem;">Get Started →</a>
+    <a href="/leaderboard.html" class="btn btn-outline" style="color:#fff; border-color:#fff;">🏆 Leaderboard</a>
+  </div>
+
+  <!-- CTF INSTRUCTIONS -->
+  <div class="card">
+    <div class="page-title">🎯 CTF Challenge Instructions</div>
+    <div class="page-subtitle">Find all the hidden flags to score points!</div>
+
+    <div class="alert alert-info">
+      <strong>📌 How to Play:</strong> Register an account, explore the app, and use browser developer tools to find hidden flags. Submit each flag at the <a href="/submit.html">Flag Submission page</a>.
+    </div>
+
+    <h3 style="margin:1.5rem 0 1rem;">🔧 Tools You'll Need</h3>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:1rem;">
+      <div class="card" style="border-left: 4px solid #2980b9; padding:1rem;">
+        <strong>🔍 Browser Inspector (F12)</strong>
+        <p style="color:#7f8c8d; margin-top:0.4rem; font-size:0.9rem;">View page source, HTML elements, hidden elements, CSS properties, disabled fields</p>
+      </div>
+      <div class="card" style="border-left: 4px solid #27ae60; padding:1rem;">
+        <strong>💻 Console Tab</strong>
+        <p style="color:#7f8c8d; margin-top:0.4rem; font-size:0.9rem;">Check console.log output, run JavaScript, read global variables</p>
+      </div>
+      <div class="card" style="border-left: 4px solid #e74c3c; padding:1rem;">
+        <strong>🌐 Network Tab</strong>
+        <p style="color:#7f8c8d; margin-top:0.4rem; font-size:0.9rem;">Monitor API requests, find hidden endpoints, inspect response data</p>
+      </div>
+      <div class="card" style="border-left: 4px solid #f39c12; padding:1rem;">
+        <strong>💾 Storage Tab</strong>
+        <p style="color:#7f8c8d; margin-top:0.4rem; font-size:0.9rem;">Check localStorage and sessionStorage for hidden data</p>
+      </div>
+    </div>
+
+    <h3 style="margin:1.5rem 0 1rem;">🚩 Flag Categories & Points</h3>
+    <table>
+      <thead><tr><th>Difficulty</th><th>Type</th><th>Points</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-easy">Easy</span></td><td>HTML Comments, Console Logs, CSS, Hidden Elements</td><td><strong>10 pts</strong></td></tr>
+        <tr><td><span class="badge badge-medium">Medium</span></td><td>Base64, Network Tab, Storage, Role Bypass, XSS</td><td><strong>20 pts</strong></td></tr>
+        <tr><td><span class="badge badge-hard">Hard</span></td><td>IDOR, Login Bypass, Admin Access, Exploit Bugs</td><td><strong>50 pts</strong></td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin:1.5rem 0 1rem;">📋 Challenge Checklist (20 Frontend + 6 Backend)</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem 2rem;">
+      <div>✅ Find flag in HTML comment</div>
+      <div>✅ Find flag in browser console</div>
+      <div>✅ Find CSS hidden element</div>
+      <div>✅ Find disabled input flag</div>
+      <div>✅ Find placeholder text leak</div>
+      <div>✅ Find image alt-text flag</div>
+      <div>✅ Find flag in page title</div>
+      <div>✅ Find localStorage flag</div>
+      <div>✅ Find sessionStorage flag</div>
+      <div>✅ Find global JS variable</div>
+      <div>✅ Decode base64 flag</div>
+      <div>✅ Find hardcoded credentials</div>
+      <div>✅ Bypass frontend role check</div>
+      <div>✅ Bypass form validation</div>
+      <div>✅ Edit DOM balance value</div>
+      <div>✅ Find hidden API in Network tab</div>
+      <div>✅ Find flag in CSS file</div>
+      <div>✅ Decode obfuscated JS flag</div>
+      <div>✅ Exploit DOM XSS</div>
+      <div>✅ Find source map flag</div>
+      <div>✅ IDOR - access another account</div>
+      <div>✅ Login bypass</div>
+      <div>✅ Negative money transfer</div>
+      <div>✅ Access admin panel</div>
+      <div>✅ Retrieve sensitive data</div>
+      <div>✅ Find hidden button</div>
+    </div>
+  </div>
+
+  <!-- FRONTEND BUG #3: Hidden element with CSS display:none -->
+  <div class="invisible-prize" id="css-hidden-flag">
+    🏆 Hidden Element Found! FLAG{css_hidden_element}
+    <!-- display:none but visible in inspect panel -->
+  </div>
+
+  <!-- FRONTEND BUG #20: Hidden button visible via inspect -->
+  <div style="text-align:center; margin:1rem 0;">
+    <button class="btn btn-danger secret-admin-btn" id="super-secret-btn" style="display:none;" onclick="window.location.href='/admin.html'">
+      🔑 Secret Admin Access — FLAG{hidden_button_revealed}
+    </button>
+  </div>
+
+  <!-- FRONTEND BUG #6: Image with flag in alt text -->
+  <div class="card" style="text-align:center;">
+    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='12' fill='%231a3c5e'/%3E%3Ctext x='12' y='16' text-anchor='middle' fill='white' font-size='10' font-family='Arial'%3E💰%3C/text%3E%3C/svg%3E"
+         alt="FLAG{alt_text_secret} - BuggyBank Logo - Check image alt attributes!"
+         width="120" height="120"
+         class="logo-img" />
+    <p style="color: var(--text-muted); margin-top:0.5rem; font-size:0.85rem;">BuggyBank Secure Banking Platform v1.3.7</p>
+  </div>
+</div>
+
+<!-- ADMIN ONLY SECTION (hidden until role='admin' in localStorage) -->
+<div class="container">
+  <div class="admin-only" style="display:none;">
+    <div class="card" style="border:2px solid #f39c12;">
+      <strong>👑 Admin Controls Unlocked!</strong>
+      <span class="flag-reveal" style="color:#e74c3c; font-weight:bold;"></span>
+      <p>You modified your role in localStorage!</p>
+      <a href="/admin.html" class="btn btn-danger" style="margin-top:1rem;">Go to Admin Panel</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>BuggyBank CTF © 2025 | For Educational Use Only | <a href="/leaderboard.html">Leaderboard</a></p>
+  <!-- FRONTEND BUG #5: Placeholder/comment with useful info -->
+  <!-- DB connection: mongodb://localhost:27017/buggybank -->
+</footer>
+
+<script src="/js/app.js"></script>
+</body>
+</html>

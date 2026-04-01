@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<!-- FRONTEND BUG #1: HTML comment hidden flag — FLAG{html_comment_secret} -->
+<html lang="en">
+<head>
+  <title>BuggyBank | Submit Flag</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="logo">💰 Buggy<span>Bank</span></div>
+  <nav>
+    <a href="/index.html">Home</a>
+    <a href="/dashboard.html" class="auth-required" style="display:none">Dashboard</a>
+    <a href="/submit.html">Submit Flag</a>
+    <a href="/leaderboard.html">Leaderboard</a>
+    <a href="/login.html" class="auth-hidden">Login</a>
+    <a href="#" onclick="logout()" class="auth-required" style="display:none">Logout (<span id="nav-username"></span>)</a>
+  </nav>
+</nav>
+
+<div class="container" style="max-width:600px;">
+  <div class="page-title">🚩 Submit Flag</div>
+  <p class="page-subtitle">Found a flag? Submit it here to claim your points!</p>
+
+  <div class="card">
+    <div id="submit-alert" class="alert" style="display:none;"></div>
+
+    <div class="form-group">
+      <label>Your Username</label>
+      <input type="text" id="submit-username" placeholder="Enter your username" />
+    </div>
+
+    <div class="form-group">
+      <label>Password (for auth)</label>
+      <input type="password" id="submit-password" placeholder="Your password" />
+    </div>
+
+    <div class="form-group">
+      <label>Flag</label>
+      <!-- FRONTEND BUG #5: Placeholder structure leaks flag format -->
+      <input type="text" id="flag-input"
+             placeholder="FLAG{example_flag} — Format: FLAG{...}" />
+    </div>
+
+    <button class="btn btn-success" style="width:100%;" onclick="submitFlag()">
+      🚩 Submit Flag
+    </button>
+  </div>
+
+  <div class="card">
+    <strong>📋 Your Submitted Flags</strong>
+    <div id="my-submissions" style="margin-top:1rem;">
+      <p style="color:var(--text-muted);">Login and submit a flag to see your history.</p>
+    </div>
+  </div>
+
+  <div class="card" style="border-left:4px solid #2980b9;">
+    <strong>💡 Flag Hints</strong>
+    <ul style="margin-top:0.7rem; padding-left:1.2rem; font-size:0.9rem; color:var(--text-muted);">
+      <li style="margin:0.4rem 0;">Check HTML source code comments</li>
+      <li style="margin:0.4rem 0;">Open browser Console (F12 → Console)</li>
+      <li style="margin:0.4rem 0;">Inspect Storage tab (localStorage + sessionStorage)</li>
+      <li style="margin:0.4rem 0;">View Network requests (especially /api/secret-config)</li>
+      <li style="margin:0.4rem 0;">Look at the page &lt;title&gt; tag</li>
+      <li style="margin:0.4rem 0;">Inspect disabled fields and image alt attributes</li>
+      <li style="margin:0.4rem 0;">Try: <code>atob("RkxBR3tiYXNlNjRfZGVjb2RlZF9mbGFnfQ==")</code></li>
+      <li style="margin:0.4rem 0;">Try: <code>localStorage.getItem('ctf_flag')</code></li>
+      <li style="margin:0.4rem 0;">Try URL: <code>/dashboard.html?search=&lt;img src=x onerror=alert(1)&gt;</code></li>
+      <li style="margin:0.4rem 0;">Access <code>/api/users</code> without auth</li>
+    </ul>
+  </div>
+</div>
+
+<footer><p>BuggyBank CTF © 2025 | <a href="/leaderboard.html">Leaderboard</a></p></footer>
+<script src="/js/app.js"></script>
+<script>
+  async function submitFlag() {
+    const username = document.getElementById('submit-username').value.trim();
+    const password = document.getElementById('submit-password').value;
+    const flagValue = document.getElementById('flag-input').value.trim();
+
+    if (!username || !password || !flagValue) {
+      showAlert('submit-alert', 'Please fill in all fields.', 'danger'); return;
+    }
+
+    try {
+      // First login to get token if not already stored
+      let token = getToken();
+      if (!token) {
+        const loginData = await apiFetch('/api/login', {
+          method: 'POST', body: JSON.stringify({ username, password })
+        });
+        if (!loginData.token) {
+          showAlert('submit-alert', loginData.error || 'Login failed', 'danger'); return;
+        }
+        saveAuth(loginData.token, loginData.user);
+        token = loginData.token;
+      }
+
+      const data = await apiFetch('/api/submit', {
+        method: 'POST',
+        body: JSON.stringify({ flagValue })
+      });
+
+      if (data.message) {
+        showAlert('submit-alert', '🏆 ' + data.message + ' — ' + (data.description || ''), 'success');
+        document.getElementById('flag-input').value = '';
+      } else {
+        showAlert('submit-alert', data.error || 'Submission failed', 'danger');
+      }
+    } catch(e) {
+      showAlert('submit-alert', 'Error: ' + e.message, 'danger');
+    }
+  }
+
+  // Pre-fill username if logged in
+  const u = getCurrentUser();
+  if (u) document.getElementById('submit-username').value = u.username;
+
+  updateNavbar();
+</script>
+</body>
+</html>

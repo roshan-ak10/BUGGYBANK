@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<!-- FRONTEND BUG #1: FLAG in HTML comment — FLAG{html_comment_secret} -->
+<!-- TODO: remove debug API key before prod: x-admin-key: secretadminkey -->
+<html lang="en">
+<head>
+  <title>BuggyBank | Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="logo">💰 Buggy<span>Bank</span></div>
+  <nav>
+    <a href="/index.html">Home</a>
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/transfer.html">Transfer</a>
+    <a href="/profile.html">Profile</a>
+    <a href="/submit.html">Submit Flag</a>
+    <a href="/leaderboard.html">Leaderboard</a>
+    <!-- FRONTEND BUG #20: Hidden admin link in nav -->
+    <a href="/admin.html" id="admin-nav-link" style="display:none; color:#f39c12; font-weight:bold;">🔑 Admin</a>
+    <a href="#" onclick="logout()">Logout (<span id="nav-username"></span>)</a>
+  </nav>
+</nav>
+
+<div class="container">
+  <!-- XSS output target — FRONTEND BUG #18 -->
+  <div id="search-output" style="margin-bottom:1rem;"></div>
+
+  <!-- BALANCE CARD — FRONTEND BUG #14: Editable balance via DevTools -->
+  <div class="balance-card">
+    <div class="label">💳 Account Balance</div>
+    <!-- FRONTEND BUG #14: This value is just DOM text — editable via DevTools inspect -->
+    <!-- Tip: Right-click the amount → Inspect → Edit as HTML to change balance! -->
+    <div class="amount" id="balance-display" contenteditable="false" title="Try making this editable in DevTools! FLAG{editable_dom_balance}">
+      $0.00
+    </div>
+    <div class="username">Welcome, <span id="dash-username">...</span></div>
+    <div style="margin-top:0.5rem; font-size:0.8rem; opacity:0.7;">
+      Account ID: <span id="dash-account-id">...</span>
+    </div>
+  </div>
+
+  <!-- FRONTEND BUG #3: CSS hidden element with flag -->
+  <div class="invisible-prize" id="css-flag-dashboard">
+    🏆 FLAG{css_hidden_element} — You found the hidden div!
+  </div>
+
+  <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem; flex-wrap:wrap;">
+    <!-- TRANSACTIONS TABLE -->
+    <div class="card">
+      <div class="page-title" style="font-size:1.3rem;">📋 Recent Transactions</div>
+      <div id="transactions-list" style="margin-top:1rem;">
+        <p style="color:var(--text-muted);">Loading transactions...</p>
+      </div>
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div>
+      <div class="card">
+        <strong>⚡ Quick Actions</strong>
+        <div style="margin-top:1rem; display:flex; flex-direction:column; gap:0.7rem;">
+          <a href="/transfer.html" class="btn btn-primary" style="text-align:center;">💸 Transfer Money</a>
+          <a href="/profile.html" class="btn btn-outline" style="text-align:center;">👤 View Profile</a>
+          <a href="/submit.html" class="btn btn-success" style="text-align:center;">🚩 Submit Flag</a>
+        </div>
+      </div>
+
+      <!-- HINTS CARD -->
+      <div class="card" style="border-left:4px solid #f39c12;">
+        <strong>💡 DevTools Hints</strong>
+        <ul style="margin-top:0.7rem; padding-left:1.2rem; color:var(--text-muted); font-size:0.88rem;">
+          <li style="margin:0.3rem 0;">Open Console — check log output</li>
+          <li style="margin:0.3rem 0;">Open Storage tab — check localStorage</li>
+          <li style="margin:0.3rem 0;">Open Network tab — watch API calls</li>
+          <li style="margin:0.3rem 0;">Right-click balance → Inspect</li>
+          <li style="margin:0.3rem 0;">Try URL: ?search=&lt;script&gt;alert(1)&lt;/script&gt;</li>
+        </ul>
+      </div>
+
+      <!-- ADMIN ONLY BLOCK — FRONTEND BUG #12 -->
+      <div class="admin-only" style="display:none;">
+        <div class="card" style="border:2px solid #e74c3c;">
+          <strong>👑 Admin Panel Unlocked!</strong>
+          <span class="flag-reveal" style="display:block; color:#e74c3c; margin-top:0.5rem; font-weight:bold;"></span>
+          <a href="/admin.html" class="btn btn-danger" style="margin-top:0.7rem; display:block; text-align:center;">Open Admin Panel</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- XSS TEST AREA -->
+  <div class="card">
+    <strong>🔍 Search Transactions (FRONTEND BUG #18 - DOM XSS)</strong>
+    <div style="display:flex; gap:1rem; margin-top:0.7rem;">
+      <input type="text" id="xss-input" placeholder='Try: <img src=x onerror=alert("FLAG{dom_xss_vulnerable}")>' style="flex:1;" />
+      <button class="btn btn-primary" onclick="doXSSSearch()">Search</button>
+    </div>
+    <div id="xss-output" style="margin-top:0.7rem; color:var(--text-muted);"></div>
+    <small style="color:#e74c3c;">⚠️ Hint: This input is vulnerable to DOM-based XSS — try injecting HTML!</small>
+  </div>
+</div>
+
+<footer><p>BuggyBank CTF © 2025</p></footer>
+
+<script src="/js/app.js"></script>
+<script>
+  requireAuth();
+
+  async function loadDashboard() {
+    const user = getCurrentUser();
+    if (!user) return;
+    document.getElementById('dash-username').textContent = user.username;
+    document.getElementById('balance-display').textContent = '$' + (user.balance || 0).toFixed(2);
+    document.getElementById('dash-account-id').textContent = user.id;
+
+    // Load fresh profile from server
+    try {
+      const profile = await apiFetch('/api/profile');
+      document.getElementById('balance-display').textContent = '$' + (profile.balance || 0).toFixed(2);
+    } catch(e) {}
+
+    // Load transactions
+    try {
+      const txns = await apiFetch('/api/transactions');
+      const container = document.getElementById('transactions-list');
+      if (!txns.length) {
+        container.innerHTML = '<p style="color:var(--text-muted)">No transactions yet.</p>';
+        return;
+      }
+      container.innerHTML = `<table>
+        <thead><tr><th>From</th><th>To</th><th>Amount</th><th>Note</th><th>Date</th></tr></thead>
+        <tbody>
+        ${txns.map(t => `<tr>
+          <td>${t.from}</td><td>${t.to}</td>
+          <td style="color:${t.amount < 0 ? 'red' : 'green'}; font-weight:bold;">$${t.amount}</td>
+          <td>${t.note || '-'}</td>
+          <td style="font-size:0.85rem;">${new Date(t.timestamp).toLocaleString()}</td>
+        </tr>`).join('')}
+        </tbody></table>`;
+    } catch(e) {}
+  }
+
+  // FRONTEND BUG #18: DOM XSS via innerHTML
+  function doXSSSearch() {
+    const input = document.getElementById('xss-input').value;
+    // VULNERABILITY: Directly inserting user input into innerHTML!
+    document.getElementById('xss-output').innerHTML = '🔍 Results for: ' + input;
+  }
+
+  loadDashboard();
+</script>
+</body>
+</html>

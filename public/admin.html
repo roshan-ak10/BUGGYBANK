@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<!-- BACKEND BUG #8: Admin panel is accessible with just a header:
+     curl -H "x-admin-key: secretadminkey" http://localhost:3000/api/admin/dashboard
+     FLAG{admin_panel_access}
+-->
+<html lang="en">
+<head>
+  <title>BuggyBank | 🔑 Admin Panel</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<nav class="navbar" style="background:#7b0000;">
+  <div class="logo">💰 Buggy<span>Bank</span> 🔑 ADMIN</div>
+  <nav>
+    <a href="/index.html">Home</a>
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="#" onclick="logout()">Logout (<span id="nav-username"></span>)</a>
+  </nav>
+</nav>
+
+<div class="container">
+  <div class="alert alert-warning">
+    <strong>⚠️ Admin Panel</strong> — This page exists! It's only "protected" by a simple header check.
+    The frontend role check leads here, but the backend protection is also weak!
+  </div>
+
+  <div class="page-title">🔑 Admin Dashboard</div>
+  <p class="page-subtitle">Central admin panel — "secured" with x-admin-key header</p>
+
+  <div class="card" style="border:2px solid #e74c3c;">
+    <strong>🔓 Backend Admin API</strong>
+    <p style="font-size:0.88rem; margin:0.5rem 0 1rem; color:var(--text-muted);">
+      The real data comes from: <code>GET /api/admin/dashboard</code><br/>
+      Try it with: <code>curl -H "x-admin-key: secretadminkey" http://localhost:3000/api/admin/dashboard</code>
+    </p>
+    <button class="btn btn-danger" onclick="loadAdminData()">🔑 Load Admin Data (Using Header)</button>
+    <div id="admin-flag" class="alert alert-success" style="display:none; margin-top:1rem;"></div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:1.5rem;">
+    <div class="card" id="admin-stats" style="display:none;">
+      <strong>📊 System Statistics</strong>
+      <div id="stats-content" style="margin-top:1rem;"></div>
+    </div>
+    <div class="card" id="admin-actions">
+      <strong>🛠 Admin Actions</strong>
+      <div style="margin-top:1rem; display:flex; flex-direction:column; gap:0.7rem;">
+        <button class="btn btn-outline" onclick="listAllUsers()">List All Users</button>
+        <button class="btn btn-outline" onclick="showSecretKeys()">Show Secret Keys</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="admin-users-section" style="display:none;">
+    <strong>👥 All Users</strong>
+    <div id="admin-users-table" style="margin-top:1rem; overflow-x:auto;"></div>
+  </div>
+</div>
+
+<footer><p>BuggyBank CTF Admin Panel | This page should not exist in production!</p></footer>
+<script src="/js/app.js"></script>
+<script>
+  // FRONTEND BUG #12: Page accessible if role = admin in localStorage
+  // but ANYONE can navigate here directly!
+  const user = getCurrentUser();
+
+  async function loadAdminData() {
+    try {
+      // BACKEND BUG #8: Auth is just a header value, not a real JWT!
+      const res = await fetch('/api/admin/dashboard', {
+        headers: {
+          'Authorization': 'Bearer ' + (getToken() || ''),
+          'x-admin-key': 'secretadminkey'   // Hardcoded key — Bug #7
+        }
+      });
+      const data = await res.json();
+
+      if (data.flag) {
+        const flagEl = document.getElementById('admin-flag');
+        flagEl.style.display = 'block';
+        flagEl.textContent = '🏆 ' + data.flag + ' — ' + data.message;
+      }
+
+      document.getElementById('admin-stats').style.display = 'block';
+      document.getElementById('stats-content').innerHTML = `
+        <p><strong>Total Users:</strong> ${data.totalUsers}</p>
+        <p><strong>Backend Flag:</strong> <code>${data.flag}</code></p>
+      `;
+
+      if (data.users) {
+        const section = document.getElementById('admin-users-section');
+        section.style.display = 'block';
+        document.getElementById('admin-users-table').innerHTML = `<table>
+          <thead><tr><th>Username</th><th>Balance</th><th>Role</th><th>Password Hash</th></tr></thead>
+          <tbody>
+          ${data.users.map(u => `<tr>
+            <td>${u.username}</td>
+            <td>$${u.balance}</td>
+            <td><span class="badge badge-${u.role}">${u.role}</span></td>
+            <td style="font-size:0.72rem; color:#e74c3c; word-break:break-all;">${u.password}</td>
+          </tr>`).join('')}
+          </tbody></table>`;
+      }
+    } catch(e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  function listAllUsers() {
+    fetch('/api/users')
+      .then(r => r.json())
+      .then(users => {
+        const section = document.getElementById('admin-users-section');
+        section.style.display = 'block';
+        document.getElementById('admin-users-table').innerHTML = `<table>
+          <thead><tr><th>Username</th><th>Email</th><th>Balance</th><th>Role</th><th>ID</th></tr></thead>
+          <tbody>
+          ${users.map(u => `<tr>
+            <td>${u.username}</td><td>${u.email}</td><td>$${u.balance}</td>
+            <td><span class="badge badge-${u.role}">${u.role}</span></td>
+            <td style="font-size:0.72rem;">${u._id}</td>
+          </tr>`).join('')}
+          </tbody></table>
+        <p style="margin-top:0.5rem; font-size:0.85rem; color:#e74c3c;">⚠️ BACKEND BUG #2: This endpoint requires NO authentication!</p>`;
+      });
+  }
+
+  function showSecretKeys() {
+    alert(
+      'Hardcoded Secrets Found!\n\n' +
+      'JWT Secret: supersecretkey123\n' +
+      'Admin Key: secretadminkey\n' +
+      'Admin Password: admin123\n\n' +
+      'FLAG{hardcoded_admin_creds}'
+    );
+  }
+
+  updateNavbar();
+</script>
+</body>
+</html>
